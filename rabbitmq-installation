@@ -1,0 +1,21 @@
+sudo systemctl stop rabbitmq-server 2>/dev/null
+sudo apt purge -y rabbitmq-server erlang*
+sudo rm -rf /var/lib/rabbitmq /etc/rabbitmq
+sudo rm -rf /etc/apt/sources.list.d/rabbitmq*
+sudo apt autoremove -y
+sudo apt clean
+sudo mkdir -p /usr/share/keyrings
+
+curl -1sLf 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/gpg.E495BB49CC4BBE5B.key' | sudo gpg --dearmor -o /usr/share/keyrings/rabbitmq-erlang.gpg
+
+curl -1sLf 'https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/gpg.9F4587F226208342.key' | sudo gpg --dearmor -o /usr/share/keyrings/rabbitmq-server.gpg
+echo "deb [signed-by=/usr/share/keyrings/rabbitmq-erlang.gpg] https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-erlang/deb/debian bookworm main" | sudo tee /etc/apt/sources.list.d/rabbitmq-erlang.list
+echo "deb [signed-by=/usr/share/keyrings/rabbitmq-server.gpg] https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/deb/debian bookworm main" | sudo tee /etc/apt/sources.list.d/rabbitmq-server.list
+sudo apt install -y erlang-base erlang-asn1 erlang-crypto erlang-eldap erlang-inets \
+  erlang-mnesia erlang-os-mon erlang-parsetools erlang-public-key erlang-runtime-tools \
+  erlang-ssl erlang-syntax-tools erlang-tools erlang-xmerl rabbitmq-server
+sudo systemctl enable rabbitmq-server
+sudo systemctl start rabbitmq-server
+sudo systemctl status rabbitmq-server
+sudo rabbitmq-plugins enable rabbitmq_management
+sudo systemctl restart rabbitmq-server
