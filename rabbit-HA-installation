@@ -1,0 +1,97 @@
+sudo hostnamectl set-hostname rabbit3
+
+sudo nano /etc/hosts:
+<server1-private-ip> rabbit1
+<server2-private-ip> rabbit2
+<server3-private-ip> rabbit3
+
+Step 2: Enable the Management Plugin (on both)
+sudo rabbitmq-plugins enable rabbitmq_management
+sudo systemctl restart rabbitmq-server
+
+
+🧩 Step 3: Copy the Erlang Cookie
+
+RabbitMQ nodes authenticate each other using a secret file called .erlang.cookie.
+It must be identical on all nodes.
+
+On rabbit1 (master):
+sudo cat /var/lib/rabbitmq/.erlang.cookie
+
+
+Copy that output (a long random string).
+
+On rabbit2 (slave) and rabbit3(slave):
+sudo systemctl stop rabbitmq-server
+echo 'KYUFUQTAXDBFAUYCXGSWWEFUAHOU' | sudo tee /var/lib/rabbitmq/.erlang.cookie
+sudo chown rabbitmq:rabbitmq /var/lib/rabbitmq/.erlang.cookie
+sudo chmod 400 /var/lib/rabbitmq/.erlang.cookie
+sudo systemctl start rabbitmq-server
+   
+   
+   
+   
+🧩 Step 4: Form the Cluster
+On rabbit2 (slave) rabbit3 (slave):
+sudo rabbitmqctl stop_app
+sudo rabbitmqctl reset
+sudo rabbitmqctl join_cluster rabbit@rabbit1
+sudo rabbitmqctl start_app
+
+
+sudo nano /etc/rabbitmq/rabbitmq.conf
+Add these lines:
+
+default_queue_type = quorum
+queue_master_locator = random
+
+
+cd /usr/local/bin
+sudo wget http://localhost:15672/cli/rabbitmqadmin
+sudo chmod +x rabbitmqadmin
+
+
+Then restart RabbitMQ on all 3 nodes:
+
+sudo systemctl restart rabbitmq-server
+
+#sudo rabbitmqctl delete_queue add1
+#sudo rabbitmqctl delete_queue myqueue
+
+sudo rabbitmqadmin declare queue name=add1 durable=true arguments='{"x-queue-type":"quorum"}'
+#sudo rabbitmqadmin declare queue name=myqueue durable=true arguments='{"x-queue-type":"quorum"}'
+
+sudo rabbitmqctl list_queues name type leader members
+
+You should see:
+
+add1   quorum   rabbit@rabbit2   [rabbit@rabbit1, rabbit@rabbit2, rabbit@rabbit3]
+
+✅ Verify HA behavior
+
+Now test your setup:
+
+Stop one node (e.g., rabbit@rabbit1):
+
+sudo systemctl stop rabbitmq-server
+
+
+Send/consume messages — queues should stay available via the remaining nodes.
+
+Start the node again — it should re-sync automatically.
+
+
+   
+   
+   
+sudo rabbitmqctl list_policies
+sudo rabbitmqctl cluster_status
+ls
+rabbitmqadmin --help
+cd /usr/local/bin
+sudo wget http://localhost:15672/cli/rabbitmqadmin
+sudo chmod +x rabbitmqadmin
+rabbitmqadmin --help
+ls
+sudo rabbitmqadmin declare queue name=myqueue durable=true arguments='{"x-queue-type":"quorum"}'
+sudo rabbitmqctl list_queues name type leader members state
